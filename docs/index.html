@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="robots" content="noindex">
+<title>今日の予定</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0f1115; --card:#1a1d23; --line:#2a2e36; --text:#f3f4f6; --sub:#c9ccd1; --muted:#9aa0a8;
+  --clinic-bg:#15241a; --clinic-text:#8ce99a; --warn:#ffa94d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:"Noto Sans JP","Noto Sans CJK JP","Hiragino Sans",system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;overflow:hidden;user-select:none;-webkit-user-select:none}
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;
+  padding:max(14px,env(safe-area-inset-top)) 14px max(10px,env(safe-area-inset-bottom));gap:10px}
+body.night #app{opacity:.35}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.date{display:flex;flex-direction:column;gap:2px}
+.date b{font-size:34px;line-height:1;font-weight:700;letter-spacing:.01em}
+.date span{font-size:14px;color:var(--sub)}
+.clock{font-size:34px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;color:var(--sub)}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:13px;font-weight:700;border-radius:4px;padding:2px 8px}
+.badge.clinic{background:var(--clinic-bg);color:var(--clinic-text);border:1px solid #2f5d3a}
+.badge.warn{color:var(--warn);border:1px solid #5c3d1e}
+.rule{height:1px;background:var(--line);flex:none}
+
+main{flex:1;min-height:0;position:relative;overflow:hidden}
+.page{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;transition:opacity .4s}
+.page.hidden{opacity:0;pointer-events:none}
+.sec{font-size:13px;color:var(--muted);margin:4px 2px 0}
+
+.card{display:flex;gap:12px;align-items:flex-start;background:var(--card);border-radius:8px;padding:10px 12px;flex:none}
+.card .t{width:62px;flex:none;display:flex;flex-direction:column;gap:2px}
+.card .t b{font-size:20px;line-height:1.15;font-variant-numeric:tabular-nums}
+.card .t span{font-size:12px;color:var(--muted)}
+.card .m{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.card .title{font-size:17px;font-weight:700;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.venue{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--sub);min-width:0}
+.venue span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.tag{font-size:11px;color:var(--muted);border:1px solid #3a3f48;border-radius:3px;padding:0 5px;flex:none;align-self:flex-start}
+.card.past{opacity:.6}
+.card.now{background:#16202c;outline:1px solid #2b4a6b}
+.tag.now{color:#0f1115;background:#4dabf7;border-color:#4dabf7;font-weight:700}
+.card.clinic{background:var(--clinic-bg);align-items:center}
+.card.clinic .t b{color:var(--clinic-text);font-size:18px}
+
+.row{display:flex;align-items:center;gap:9px;padding:6px 10px;flex:none;min-height:34px}
+.row .when{width:66px;flex:none;font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums}
+.row .name{flex:1;min-width:0;font-size:15px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+.compact .card{padding:7px 10px}
+.compact .card .title{-webkit-line-clamp:1;font-size:16px}
+.compact .card .t b{font-size:17px}
+.compact .card .m{gap:3px}
+
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--sub)}
+.empty b{font-size:20px;color:var(--text)}
+
+.next{background:var(--card);border-radius:8px;padding:9px 12px;display:flex;flex-direction:column;gap:5px;flex:none}
+.next .h{font-size:13px;color:var(--muted)}
+.next .row{padding:0;min-height:22px}
+.next .row .name{font-size:14px;color:var(--sub)}
+.next .row .when{font-size:12px;width:auto;color:var(--muted)}
+
+footer{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);gap:8px}
+.pager{display:flex;gap:5px}
+.pager i{width:7px;height:7px;border-radius:50%;background:#3a3f48}
+.pager i.on{background:var(--sub)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="date"><b id="d">--/--</b><span id="w">読み込み中…</span></div>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+  <div class="badges" id="badges"></div>
+  <div class="rule"></div>
+  <main id="main"></main>
+  <div id="next"></div>
+  <footer><span id="status">定禅寺通りイベントカレンダー</span><span class="pager" id="pager"></span></footer>
+</div>
+<script>
+(() => {
+  'use strict';
+  // ===== 設定 =====
+  const DATA_URL = 'events.json';
+  const REFETCH_MIN = 30;          // 予定を取り直す間隔（分）
+  const PAGE_SEC = 12;             // 1画面に収まらないときの切り替え間隔（秒）
+  const NIGHT = [23, 6];           // この時間帯は画面を暗くする（時）
+  const DAILY_RELOAD_HOUR = 4;     // 毎日この時刻にページを読み直す（時）
+  const CACHE_KEY = 'jozenji-events-v1';
+  const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+
+  // テスト用: ?now=2026-11-11T08:05 と ?data=xxx.json で時刻とデータを差し替えられる
+  const qs = new URLSearchParams(location.search);
+  const fixedNow = qs.get('now') ? new Date(qs.get('now') + '+09:00') : null;
+  const dataUrl = qs.get('data') || DATA_URL;
+
+  let data = null, lastFetchOk = null, fetchFailed = false, pageIdx = 0, pageTimer = null, lastKey = '';
+
+  // 端末の時刻設定に関係なく日本時間で扱う
+  function nowJST() {
+    const base = fixedNow ? fixedNow : new Date();
+    const j = new Date(base.getTime() + 9 * 3600e3);
+    return { y: j.getUTCFullYear(), mo: j.getUTCMonth() + 1, d: j.getUTCDate(), wd: j.getUTCDay(),
+             h: j.getUTCHours(), mi: j.getUTCMinutes(), ms: base.getTime() };
+  }
+  const pad = n => String(n).padStart(2, '0');
+  const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+  function addDays(isoDate, n) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const t = new Date(Date.UTC(y, m - 1, d + n));
+    return iso(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+  }
+  const md = isoDate => { const [, m, d] = isoDate.split('-').map(Number); return `${m}/${d}`; };
+
+  // "開場17:30 開演18:30" "9:30〜15:00" "①14:30 ②19:00 開演" などから表示用の時刻を取り出す
+  function parseTime(s) {
+    if (!s) return null;
+    const times = [...s.matchAll(/(\d{1,2})[:：](\d{2})/g)].map(m => ({ h: +m[1], m: +m[2], i: m.index, len: m[0].length }));
+    if (!times.length) return null;
+    let main = times[0], label = '', end = null;
+    const kaien = s.indexOf('開演');
+    if (/開場/.test(s) && kaien >= 0) {
+      const after = times.find(t => t.i > kaien) || times.filter(t => t.i < kaien).pop();
+      if (after) main = after; label = '開演';
+    } else if (kaien >= 0) label = '開演';
+    // Rensa の「開場 / 開演」形式（例: 17:00 / 18:00）は後ろが開演
+    const slash = s.match(/(\d{1,2})[:：](\d{2})\s*[\/／]\s*(\d{1,2})[:：](\d{2})/);
+    if (slash && kaien < 0) { main = { h: +slash[3], m: +slash[4] }; label = '開演'; }
+    const rng = s.match(/(\d{1,2})[:：](\d{2})\s*[〜~\-－ー]\s*(\d{1,2})[:：](\d{2})/);
+    if (rng) { main = { h: +rng[1], m: +rng[2] }; end = { h: +rng[3], m: +rng[4] }; label = `〜${rng[3]}:${rng[4]}`; }
+    const multi = (s.match(/[①②③④]/g) || []).length;
+    if (multi > 1) label = `ほか${multi - 1}回`;
+    if (/最終日/.test(s)) return null; // 会期ものの注記は時刻扱いしない
+    return { h: main.h, m: main.m, end, label };
+  }
+  const mins = t => t.h * 60 + t.m;
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function dot(color) { const d = el('span', 'dot'); d.style.background = color; return d; }
+
+  function srcMap() {
+    const m = {};
+    for (const s of (data && data.sources) || []) m[s.id] = s;
+    return m;
+  }
+
+  function classify(today, nowMin) {
+    const S = srcMap();
+    const evs = (data && data.events) || [];
+    const clinic = [], timed = [], ongoing = [];
+    for (const e of evs) {
+      if (!(e.start <= today && today <= e.end)) continue;
+      const src = S[e.s] || { color: '#adb5bd', kind: 'event', name: e.s };
+      const item = { ...e, color: src.color, srcName: src.name };
+      if (src.kind === 'clinic') {
+        const ct = parseTime(e.time);
+        item.past = !!(ct && ct.end && nowMin > mins(ct.end));
+        clinic.push(item); continue;
+      }
+      const t = parseTime(e.time);
+      if (e.start === e.end) {
+        item.t = t;
+        if (t) {
+          // 終わりの時刻がないものは、始まってから2時間半で終わったとみなす
+          const endMin = t.end ? mins(t.end) : mins(t) + 150;
+          item.past = nowMin > endMin;
+          item.now = !item.past && nowMin >= mins(t);
+        }
+        timed.push(item);
+      } else {
+        item.t = t;
+        item.when = e.start === today ? '本日から' : e.end === today ? '本日まで' : `〜${md(e.end)}`;
+        ongoing.push(item);
+      }
+    }
+    timed.sort((a, b) => (a.t ? mins(a.t) : 9999) - (b.t ? mins(b.t) : 9999));
+    ongoing.sort((a, b) => a.end.localeCompare(b.end));
+    return { clinic, timed, ongoing };
+  }
+
+  function cardFor(item) {
+    const c = el('div', 'card' + (item.past ? ' past' : '') + (item.now ? ' now' : ''));
+    const t = el('div', 't');
+    t.append(el('b', '', item.t ? `${item.t.h}:${pad(item.t.m)}` : '終日'));
+    if (item.t && item.t.label) t.append(el('span', '', item.t.label));
+    const m = el('div', 'm');
+    m.append(el('div', 'title', item.title));
+    const v = el('div', 'venue'); v.append(dot(item.color), el('span', '', item.venue || item.srcName));
+    m.append(v);
+    c.append(t, m);
+    if (item.past) c.append(el('span', 'tag', '終了'));
+    else if (item.now) c.append(el('span', 'tag now', '開催中'));
+    return c;
+  }
+  function clinicCard(item) {
+    const c = el('div', 'card clinic' + (item.past ? ' past' : ''));
+    const t = el('div', 't'); t.append(el('b', '', '健診'));
+    const m = el('div', 'm');
+    const v = el('div', 'venue'); v.style.fontSize = '16px'; v.style.fontWeight = '700'; v.style.color = 'var(--text)';
+    v.append(dot(item.color), el('span', '', item.title || item.srcName));
+    m.append(v);
+    if (item.time) m.append(el('div', 'venue', item.time));
+    c.append(t, m);
+    return c;
+  }
+  function rowFor(item) {
+    const r = el('div', 'row');
+    r.append(dot(item.color), el('span', 'when', item.t && item.t.end ? `${item.t.h}:${pad(item.t.m)}〜` : item.when), el('span', 'name', item.title));
+    return r;
+  }
+
+  // 要素を高さに合わせてページに振り分ける
+  function paginate(blocks) {
+    const main = document.getElementById('main');
+    main.textContent = '';
+    main.classList.remove('compact');
+    const H = main.clientHeight;
+    const build = () => {
+      main.textContent = '';
+      const pages = []; let page = el('div', 'page'); main.append(page); let used = 0;
+      for (const b of blocks) {
+        page.append(b);
+        const h = b.getBoundingClientRect().height + 8;
+        if (used + h > H && page.children.length > 1) {
+          page.removeChild(b);
+          pages.push(page); page = el('div', 'page hidden'); main.append(page); page.append(b); used = h;
+        } else used += h;
+      }
+      pages.push(page);
+      return pages;
+    };
+    let pages = build();
+    if (pages.length > 1) { main.classList.add('compact'); pages = build(); }
+    // 「会期中」の見出しだけがページの最後に残ったら次のページへ送る
+    for (let i = 0; i < pages.length - 1; i++) {
+      const last = pages[i].lastElementChild;
+      if (last && last.classList.contains('sec') && pages[i].children.length > 1) pages[i + 1].prepend(last);
+    }
+    return pages;
+  }
+
+  function showPage(pages) {
+    clearInterval(pageTimer);
+    const pager = document.getElementById('pager');
+    pager.textContent = '';
+    if (pages.length <= 1) return;
+    pageIdx = Math.min(pageIdx, pages.length - 1);
+    const paint = () => {
+      pages.forEach((p, i) => p.classList.toggle('hidden', i !== pageIdx));
+      [...pager.children].forEach((d, i) => d.classList.toggle('on', i === pageIdx));
+    };
+    pages.forEach(() => pager.append(el('i')));
+    paint();
+    pageTimer = setInterval(() => { pageIdx = (pageIdx + 1) % pages.length; paint(); }, PAGE_SEC * 1000);
+  }
+
+  function render(force) {
+    const n = nowJST();
+    const today = iso(n.y, n.mo, n.d);
+    const nowMin = n.h * 60 + n.mi;
+    document.getElementById('clock').textContent = `${n.h}:${pad(n.mi)}`;
+    document.body.classList.toggle('night', NIGHT[0] > NIGHT[1] ? (n.h >= NIGHT[0] || n.h < NIGHT[1]) : (n.h >= NIGHT[0] && n.h < NIGHT[1]));
+    // 中身は日付・分単位の状態が変わったときだけ作り直す
+    const key = `${today}|${Math.floor(nowMin / 5)}|${data ? data.generated_at : ''}|${fetchFailed}`;
+    if (!force && key === lastKey) return;
+    lastKey = key;
+
+    document.getElementById('d').textContent = `${n.mo}/${n.d}`;
+    const { clinic, timed, ongoing } = classify(today, nowMin);
+    const total = clinic.length + timed.length + ongoing.length;
+    document.getElementById('w').textContent = data ? `${WEEK[n.wd]}曜日 · 今日の予定 ${total}件` : `${WEEK[n.wd]}曜日`;
+
+    const badges = document.getElementById('badges');
+    badges.textContent = '';
+    if (clinic.length) badges.append(el('span', 'badge clinic', '健診日'));
+    const stale = data && data.data_updated_at && (n.ms - Date.parse(data.data_updated_at)) > 10 * 864e5;
+    if (!data) badges.append(el('span', 'badge warn', '予定を読み込めません'));
+    else if (fetchFailed) badges.append(el('span', 'badge warn', 'オフライン（前回のデータ）'));
+    else if (stale) badges.append(el('span', 'badge warn', 'データが古くなっています'));
+    badges.style.display = badges.children.length ? '' : 'none';
+
+    // 明日の予定（一覧の高さが決まるよう、先に作る）
+    renderNext(today);
+
+    const blocks = [];
+    clinic.forEach(c => blocks.push(clinicCard(c)));
+    timed.forEach(t => blocks.push(cardFor(t)));
+    if (ongoing.length) { blocks.push(el('div', 'sec', '会期中')); ongoing.forEach(o => blocks.push(rowFor(o))); }
+
+    const main = document.getElementById('main');
+    if (!blocks.length) {
+      main.classList.remove('compact');
+      main.textContent = '';
+      const e = el('div', 'empty');
+      if (data) e.append(el('b', '', '今日の予定はありません'));
+      else if (fetchFailed) { e.append(el('b', '', '予定を読み込めません')); e.append(el('span', '', 'Wi-Fiの接続を確認してください')); }
+      else e.append(el('b', '', '読み込み中…'));
+      main.append(e);
+      showPage([]);
+    } else {
+      showPage(paginate(blocks));
+    }
+
+    const st = document.getElementById('status');
+    st.textContent = data && data.data_updated_at
+      ? `定禅寺通りイベントカレンダー · 更新 ${md(data.data_updated_at.slice(0, 10))} ${data.data_updated_at.slice(11, 16)}`
+      : '定禅寺通りイベントカレンダー';
+  }
+
+  function renderNext(today) {
+    const nx = document.getElementById('next');
+    nx.textContent = '';
+    if (data) {
+      const tomorrow = addDays(today, 1);
+      const S = srcMap();
+      const list = data.events.filter(e => e.start === tomorrow);
+      const cont = data.events.filter(e => e.start < tomorrow && tomorrow <= e.end).length;
+      const box = el('div', 'next');
+      box.append(el('div', 'h', list.length ? `明日 ${md(tomorrow)} · ${list.length}件` + (cont ? `（ほか会期中 ${cont}件）` : '') : `明日 ${md(tomorrow)} · 新しい予定なし`));
+      list.slice(0, 3).forEach(e => {
+        const t = parseTime(e.time);
+        const r = el('div', 'row');
+        r.append(dot((S[e.s] || {}).color || '#adb5bd'), el('span', 'name', e.title), el('span', 'when', t ? `${t.h}:${pad(t.m)}` : ''));
+        box.append(r);
+      });
+      nx.append(box);
+    }
+  }
+
+  async function load() {
+    try {
+      const sep = dataUrl.includes('?') ? '&' : '?';
+      const r = await fetch(`${dataUrl}${sep}t=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      if (!j || !Array.isArray(j.events)) throw new Error('bad data');
+      data = j; fetchFailed = false; lastFetchOk = Date.now();
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(j)); } catch (_) {}
+    } catch (err) {
+      fetchFailed = true;
+      if (!data) { try { const c = localStorage.getItem(CACHE_KEY); if (c) data = JSON.parse(c); } catch (_) {} }
+    }
+    render(true);
+  }
+
+  // 画面が消えないようにする（対応していない環境では何もしない）
+  let lock = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator && document.visibilityState === 'visible') lock = await navigator.wakeLock.request('screen'); } catch (_) {}
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { keepAwake(); load(); } });
+
+  // 毎日決まった時刻にページを読み直して、ページ自体の更新も取り込む
+  const bootDay = nowJST().d;
+  setInterval(() => {
+    const n = nowJST();
+    if (n.d !== bootDay && n.h === DAILY_RELOAD_HOUR && !fixedNow) location.reload();
+  }, 60e3);
+
+  setInterval(() => render(false), 15e3);
+  setInterval(load, REFETCH_MIN * 60e3);
+  window.addEventListener('resize', () => render(true));
+  load(); keepAwake();
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
