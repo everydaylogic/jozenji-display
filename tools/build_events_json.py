@@ -49,6 +49,7 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--days", type=int, default=21, help="今日から何日先まで載せるか")
     ap.add_argument("--today", help="基準日（テスト用, YYYY-MM-DD）")
+    ap.add_argument("--clinic", help="健診の年間スケジュール（clinic/calendar の JSON）")
     args = ap.parse_args()
 
     today = dt.date.fromisoformat(args.today) if args.today else dt.datetime.now(JST).date()
@@ -90,6 +91,30 @@ def main():
                 "end": end.isoformat(),
             })
 
+    # 健診：フロアごとの日別の状態（open=終日 / pm_closed=午前のみ / closed=休診）
+    clinic = None
+    if args.clinic:
+        try:
+            cal = json.loads(pathlib.Path(args.clinic).read_text(encoding="utf-8"))
+            floors = [f for f in ("women", "men") if f in cal.get("floors", {})]
+            labels = {"women": "女性", "men": "男性"}
+            days = {}
+            d = window_start
+            while d <= window_end:
+                k = d.isoformat()
+                st = [cal["floors"][f]["days"].get(k) for f in floors]
+                if any(st):
+                    days[k] = st
+                d += dt.timedelta(days=1)
+            clinic = {
+                "name": cal.get("name", "一番町健診クリニック"),
+                "color": DARK_COLORS["morisanho"],
+                "floors": [labels.get(f, f) for f in floors],
+                "days": days,
+            }
+        except (OSError, json.JSONDecodeError, KeyError) as e:
+            print(f"clinic skipped: {e}", file=sys.stderr)
+
     sources.sort(key=lambda s: s["order"])
     events.sort(key=lambda e: (e["start"], e["s"], e["title"]))
     fetched = [s["fetched_at"] for s in sources if s["fetched_at"]]
@@ -100,6 +125,7 @@ def main():
         "range": [window_start.isoformat(), window_end.isoformat()],
         "sources": sources,
         "events": events,
+        "clinic": clinic,
     }
     outp = pathlib.Path(args.out)
     outp.parent.mkdir(parents=True, exist_ok=True)

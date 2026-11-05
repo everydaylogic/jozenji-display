@@ -32,6 +32,14 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
 .badge.clinic{background:var(--clinic-bg);color:var(--clinic-text);border:1px solid #2f5d3a}
 .badge.warn{color:var(--warn);border:1px solid #5c3d1e}
 .rule{height:1px;background:var(--line);flex:none}
+.clinic-strip{display:flex;align-items:center;gap:8px;background:var(--clinic-bg);border-radius:8px;padding:8px 12px;white-space:nowrap;overflow:hidden}
+.clinic-strip:empty{display:none}
+.clinic-strip .h{font-size:15px;font-weight:700;color:var(--clinic-text);margin-right:2px}
+.clinic-strip .f{font-size:14px;color:var(--text)}
+.clinic-strip .f small{font-size:12px;color:var(--sub);margin-right:4px}
+.clinic-strip .f.off{color:var(--muted)}
+.clinic-strip .end{font-size:12px;color:var(--muted);margin-left:auto}
+.clinic-strip.done{opacity:.6}
 
 main{flex:1;min-height:0;position:relative;overflow:hidden}
 .page{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;transition:opacity .4s}
@@ -85,6 +93,7 @@ footer{display:flex;justify-content:space-between;align-items:center;font-size:1
     <div class="date"><b id="d">--/--</b><span id="w">読み込み中…</span></div>
     <div class="clock" id="clock">--:--</div>
   </header>
+  <div class="clinic-strip" id="clinic"></div>
   <div class="badges" id="badges"></div>
   <div class="rule"></div>
   <main id="main"></main>
@@ -286,12 +295,12 @@ footer{display:flex;justify-content:space-between;align-items:center;font-size:1
 
     document.getElementById('d').textContent = `${n.mo}/${n.d}`;
     const { clinic, timed, ongoing } = classify(today, nowMin);
-    const total = clinic.length + timed.length + ongoing.length;
+    const total = timed.length + ongoing.length;
+    renderClinic(today, n);
     document.getElementById('w').textContent = data ? `${WEEK[n.wd]}曜日 · 今日の予定 ${total}件` : `${WEEK[n.wd]}曜日`;
 
     const badges = document.getElementById('badges');
     badges.textContent = '';
-    if (clinic.length) badges.append(el('span', 'badge clinic', '健診日'));
     const stale = data && data.data_updated_at && (n.ms - Date.parse(data.data_updated_at)) > 10 * 864e5;
     if (!data) badges.append(el('span', 'badge warn', '予定を読み込めません'));
     else if (fetchFailed) badges.append(el('span', 'badge warn', 'オフライン（前回のデータ）'));
@@ -324,6 +333,34 @@ footer{display:flex;justify-content:space-between;align-items:center;font-size:1
     st.textContent = data && data.data_updated_at
       ? `定禅寺通りイベントカレンダー · 更新 ${md(data.data_updated_at.slice(0, 10))} ${data.data_updated_at.slice(11, 16)}`
       : '定禅寺通りイベントカレンダー';
+  }
+
+  // 健診（一番町健診クリニック）の今日の受付状況
+  const CLINIC_TEXT = { open: '終日', pm_closed: '午前のみ', closed: '休診' };
+  function renderClinic(today, n) {
+    const box = document.getElementById('clinic');
+    box.textContent = '';
+    box.classList.remove('done');
+    const c = data && data.clinic;
+    const st = c && c.days && c.days[today];
+    if (!st) return;
+    box.append(dot(c.color), el('span', 'h', '健診'));
+    if (st.every(s => s === 'closed' || !s)) {
+      box.append(el('span', 'f off', '休診日'));
+      return;
+    }
+    const sat = n.wd === 6;
+    st.forEach((s, i) => {
+      const f = el('span', 'f' + (s === 'closed' ? ' off' : ''));
+      f.append(el('small', '', c.floors[i] || ''), document.createTextNode(sat && s !== 'closed' ? '午前のみ' : (CLINIC_TEXT[s] || '—')));
+      box.append(f);
+    });
+    // 受付の終わり：平日の午後あり 14:30、午前のみ 11:45、土曜 10:00
+    const anyPm = !sat && st.includes('open');
+    const endMin = sat ? 10 * 60 : anyPm ? 14 * 60 + 30 : 11 * 60 + 45;
+    const nowMin = n.h * 60 + n.mi;
+    if (nowMin > endMin) { box.classList.add('done'); box.append(el('span', 'end', '受付終了')); }
+    else box.append(el('span', 'end', `〜${Math.floor(endMin / 60)}:${pad(endMin % 60)}`));
   }
 
   function renderNext(today) {
