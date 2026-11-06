@@ -59,7 +59,7 @@ body.night .wrap{opacity:.35}
 .open{color:var(--ok)}.am{color:var(--warn)}.closed,.unknown{color:var(--off)}
 /* 何日も続く催しの帯（スマホでも小さな文字で名前を入れる） */
 .bar{margin:0 2px;padding:1px 4px;border-radius:3px;font-size:10px;line-height:1.35;color:var(--text);
-  background:color-mix(in srgb,var(--c) 30%,var(--surface));box-shadow:inset 2px 0 0 var(--c);
+  background:var(--bgc);box-shadow:inset 2px 0 0 var(--c);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bar.fp{margin-left:0;border-top-left-radius:0;border-bottom-left-radius:0;box-shadow:none}
 .bar.tn{margin-right:0;border-top-right-radius:0;border-bottom-right-radius:0}
@@ -75,7 +75,7 @@ body.night .wrap{opacity:.35}
   .kc{font-size:12px;gap:4px}.kc .l{display:inline}
   .num{font-size:15px}
   .bar{padding:2px 6px;font-size:12px;border-radius:4px;margin:0 3px;
-    background:color-mix(in srgb,var(--c) 22%,var(--surface));box-shadow:inset 3px 0 0 var(--c)}
+    box-shadow:inset 3px 0 0 var(--c)}
   .bar.fp{margin-left:0;box-shadow:none}
   .bar.tn{margin-right:0}
   .sg{display:grid;gap:2px;padding:2px 5px 6px}
@@ -173,6 +173,13 @@ footer{font-size:11px;color:var(--muted);display:flex;justify-content:space-betw
   const addDays = (s, n) => { const [y, m, d] = parts(s); const t = new Date(Date.UTC(y, m - 1, d + n)); return iso(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()); };
   const md = s => { const [, m, d] = parts(s); return `${m}/${d}`; };
 
+  // 帯の背景色：会場の色を下地の色に混ぜる（古いChromeは CSS の color-mix に対応していないので、ここで計算する）
+  function mixHex(hex, base, ratio) {
+    const p = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
+    const a = p(hex), b = p(base);
+    return `rgb(${a.map((v, i) => Math.round(v * ratio + b[i] * (1 - ratio))).join(',')})`;
+  }
+
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -262,7 +269,9 @@ footer{font-size:11px;color:var(--muted);display:flex;justify-content:space-betw
     bars.forEach(({ e, s, t, lane }) => {
       const b = el('div', `bar${e.start < ws ? ' fp' : ''}${e.end > we ? ' tn' : ''}${days[s].out && days[t].out ? ' out' : ''}`);
       b.style.gridColumn = `${s + 1} / ${t + 2}`; b.style.gridRow = lane + 2;
-      b.style.setProperty('--c', (SRC[e.s] || {}).color || '#adb5bd');
+      const col = (SRC[e.s] || {}).color || '#adb5bd';
+      b.style.setProperty('--c', col);
+      b.style.setProperty('--bgc', mixHex(col, '#16191e', 0.28));
       b.append(el('span', '', shortTitle(e)));
       b.title = `${e.title}（${md(e.start)}〜${md(e.end)}）`;
       w.append(b);
