@@ -84,6 +84,19 @@ body.night .wrap{opacity:.35}
   .sg .more{font-size:11px;line-height:1.3}
 }
 
+/* 横向きのスマホ（高さが低い画面）：上の操作を細くし、週の高さを詰める */
+@media (orientation: landscape) and (max-height: 520px) {
+  .wrap{padding:6px max(10px,env(safe-area-inset-right)) 10px max(10px,env(safe-area-inset-left));gap:8px}
+  .btn{height:38px;min-width:40px;font-size:14px}
+  .nav h1{font-size:17px}
+  .wk div{padding:3px 0}
+  .week{min-height:62px;row-gap:2px}
+  .dh{padding:2px 4px 0}
+  .bar{padding:1px 5px;font-size:11px}
+  .sg{padding:1px 4px 3px;gap:1px}
+  .sg .row{font-size:11px}
+}
+
 /* 選んだ日の詳細 */
 .detail{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px;align-content:start}
 .detail h2{font-size:18px;margin:0;display:flex;align-items:baseline;gap:8px}

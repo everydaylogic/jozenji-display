@@ -91,6 +91,28 @@ footer .fl #status{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .cbtn{flex:none;font-size:14px;font-weight:700;color:var(--text);background:var(--card);border:1px solid #3a3f48;
   border-radius:8px;height:44px;padding:0 14px;display:inline-flex;align-items:center;text-decoration:none}
 .cbtn:focus-visible{outline:2px solid #4dabf7;outline-offset:2px}
+
+/* 横向き（スマホを横にして置いたとき）：左に日付・時計・健診・明日、右に今日の予定 */
+@media (orientation: landscape) and (max-height: 520px) {
+  #app{display:grid;grid-template-columns:236px minmax(0,1fr);
+    grid-template-rows:auto auto auto 1fr auto;
+    grid-template-areas:"head main" "clinic main" "badges main" "next main" "foot main";
+    column-gap:14px;row-gap:8px;padding:10px max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left))}
+  header{grid-area:head}
+  #clinic{grid-area:clinic}
+  #badges{grid-area:badges}
+  .rule{display:none}
+  main{grid-area:main;height:100%}
+  #next{grid-area:next;align-self:end;min-height:0;overflow:hidden}
+  footer{grid-area:foot}
+  .date b,.clock{font-size:30px}
+  .date span{font-size:13px}
+  .clinic-strip{grid-template-columns:auto 1fr;padding:6px 10px;row-gap:2px}
+  .clinic-strip .end{grid-column:1 / -1;text-align:left;white-space:normal !important}
+  .clinic-strip .f{font-size:14px}
+  .next .row .name{font-size:13px}
+  .card .title{font-size:16px}
+}
 .pager{display:flex;gap:5px}
 .pager i{width:7px;height:7px;border-radius:50%;background:#3a3f48}
 .pager i.on{background:var(--sub)}
