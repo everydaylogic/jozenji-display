@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="robots" content="noindex">
+<title>月間カレンダー</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0f1115; --surface:#16191e; --card:#1a1d23; --line:#2a2e36; --text:#f3f4f6; --sub:#c9ccd1; --muted:#9aa0a8;
+  --sun:#ff8a8a; --sat:#7eaef2; --ok:#6cc47e; --warn:#f0a457; --off:#6f7a75; --sel:#2c2716; --accent:#4dabf7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Noto Sans JP","Noto Sans CJK JP","Hiragino Sans",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body.kiosk{user-select:none;-webkit-user-select:none}
+body.night .wrap{opacity:.35}
+.wrap{max-width:1180px;margin:0 auto;padding:max(10px,env(safe-area-inset-top)) 10px max(12px,env(safe-area-inset-bottom));
+  display:grid;gap:10px}
+@media (min-width:900px){
+  .wrap{grid-template-columns:minmax(0,2.2fr) minmax(300px,1fr);align-items:start;padding:20px 20px 28px;gap:18px}
+  .top,.legend,footer{grid-column:1 / -1}
+}
+
+/* 上の操作 */
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nav{display:flex;align-items:center;gap:4px}
+.nav h1{font-size:20px;margin:0;min-width:7.2em;text-align:center;font-variant-numeric:tabular-nums}
+.btn{font:inherit;font-size:15px;font-weight:700;color:var(--text);background:var(--card);border:1px solid #3a3f48;
+  border-radius:8px;min-width:44px;height:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;
+  text-decoration:none;cursor:pointer}
+.btn:disabled{opacity:.3;cursor:default}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* カレンダー */
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--bg);border-bottom:1px solid var(--line)}
+.wk div{font-size:12px;font-weight:700;text-align:center;padding:6px 0;color:var(--muted)}
+.wk .sun{color:var(--sun)}.wk .sat{color:var(--sat)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:2px;min-height:58px;border-bottom:1px solid var(--line);position:relative}
+.week:last-child{border-bottom:0}
+.day{grid-row:1 / -1;border:0;border-right:1px solid var(--line);background:transparent;padding:0;margin:0;cursor:pointer;font:inherit;color:inherit}
+.day.c6{border-right:0}
+.day.out{background:#0c0e11}
+.day.today{background:#16202c}
+.day.sel{background:var(--sel);box-shadow:inset 0 0 0 2px #8a7a3d}
+.day:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.dh,.bar,.sg{pointer-events:none;position:relative;z-index:1;min-width:0}
+.dh{grid-row:1;display:flex;justify-content:space-between;align-items:flex-start;gap:2px;padding:4px 4px 1px}
+.dh.out{opacity:.45}
+.num{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.dh.sun .num{color:var(--sun)}.dh.sat .num{color:var(--sat)}
+.dh.today .num{background:var(--accent);color:#0f1115;border-radius:999px;padding:0 5px;margin-left:-2px}
+.kc{display:inline-flex;gap:1px;font-size:11px;font-weight:700;line-height:1.2;white-space:nowrap}
+.kc .l{display:none;color:var(--muted);font-weight:400;margin-right:1px}
+.open{color:var(--ok)}.am{color:var(--warn)}.closed,.unknown{color:var(--off)}
+.bar{height:4px;margin:0 3px;border-radius:2px;background:var(--c)}
+.bar.fp{margin-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
+.bar.tn{margin-right:0;border-top-right-radius:0;border-bottom-right-radius:0}
+.bar span{display:none}
+.bar.out{opacity:.45}
+.sg{display:flex;flex-wrap:wrap;gap:3px;padding:2px 4px 5px;align-content:flex-start}
+.sg.out{opacity:.45}
+.sg .row{display:inline-flex;align-items:center}
+.sg i{display:block;width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.sg .t{display:none}
+.sg .more{font-size:10px;color:var(--muted);line-height:7px}
+@media (min-width:640px){
+  .week{min-height:104px;row-gap:3px}
+  .kc{font-size:12px;gap:4px}.kc .l{display:inline}
+  .num{font-size:15px}
+  .bar{height:auto;padding:2px 6px;font-size:12px;line-height:1.35;background:color-mix(in srgb,var(--c) 22%,var(--surface));
+    box-shadow:inset 3px 0 0 var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:4px}
+  .bar.fp{box-shadow:none}
+  .bar span{display:inline}
+  .sg{display:grid;gap:2px;padding:2px 5px 6px}
+  .sg .row{display:flex;gap:5px;align-items:center;font-size:12px;line-height:1.35;min-width:0}
+  .sg .t{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .sg .more{font-size:11px;line-height:1.3}
+}
+
+/* 選んだ日の詳細 */
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px;align-content:start}
+.detail h2{font-size:18px;margin:0;display:flex;align-items:baseline;gap:8px}
+.detail h2 small{font-size:13px;color:var(--muted);font-weight:400}
+.clin{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;background:#15241a;border-radius:8px;padding:8px 12px}
+.clin .h{font-weight:700;color:#8ce99a;font-size:15px}
+.clin .fs{display:grid;gap:2px}
+.clin .f{display:flex;gap:6px;align-items:center;font-size:14px}
+.clin .f small{color:var(--sub);font-size:12px;width:2.6em}
+.clin .mk{font-weight:700;width:1em;text-align:center}
+.evs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ev{display:flex;gap:10px;background:var(--card);border-radius:8px;padding:8px 10px}
+.ev .tm{width:52px;flex:none;display:flex;flex-direction:column}
+.ev .tm b{font-size:16px;font-variant-numeric:tabular-nums}
+.ev .tm span{font-size:11px;color:var(--muted)}
+.ev .m{flex:1;min-width:0;display:grid;gap:3px}
+.ev .ti{font-size:15px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.ev .vn{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--sub)}
+.ev .vn i{width:9px;height:9px;border-radius:3px;background:var(--c);flex:none}
+.ev .pd{font-size:11px;color:var(--muted);border:1px solid #3a3f48;border-radius:3px;padding:0 5px;align-self:flex-start;white-space:nowrap}
+.none{color:var(--muted);font-size:14px;margin:0}
+
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);align-items:center}
+.legend .s{display:inline-flex;align-items:center;gap:5px}
+.legend .s i{width:9px;height:9px;border-radius:3px;background:var(--c)}
+.legend b{font-size:13px}
+footer{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="nav">
+      <button class="btn" id="prev" type="button" aria-label="前の月">‹</button>
+      <h1 id="mlabel">----年--月</h1>
+      <button class="btn" id="next" type="button" aria-label="次の月">›</button>
+    </div>
+    <a class="btn" id="back" href="./">今日 ›</a>
+  </div>
+  <div class="cal" id="cal" role="grid" aria-label="月間カレンダー"></div>
+  <section class="detail" id="detail" aria-live="polite"></section>
+  <div class="legend" id="legend"></div>
+  <footer><span id="status">定禅寺通りイベントカレンダー</span><span id="hint"></span></footer>
+</div>
+<script>
+(() => {
+  'use strict';
+  const DATA_URL = 'events.json';
+  const IDLE_BACK_SEC = 120;       // 表示板として使っているとき、触らなければ今日の画面に戻るまでの秒数
+  const NIGHT = [23, 6];
+  const CACHE_KEY = 'jozenji-events-v1';
+  const WD = ['日', '月', '火', '水', '木', '金', '土'];
+  const MARK = { open: '○', am: '△', closed: '×', unknown: '－' };
+  const MARK_TEXT = { open: '午前・午後', am: '午前のみ', closed: '休診', unknown: '予定なし' };
+
+  const qs = new URLSearchParams(location.search);
+  const fixedNow = qs.get('now') ? new Date(qs.get('now') + '+09:00') : null;
+  const dataUrl = qs.get('data') || DATA_URL;
+  // 表示板（ホーム画面から全画面で開いたとき）かどうか
+  const kiosk = qs.has('kiosk') || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+  document.body.classList.toggle('kiosk', kiosk);
+  // テスト用のパラメータは「今日」に戻るリンクにも引き継ぐ
+  if (fixedNow || qs.get('data')) document.getElementById('back').href = './' + location.search;
+
+  const pad = n => String(n).padStart(2, '0');
+  const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+  function nowJST() {
+    const base = fixedNow || new Date();
+    const j = new Date(base.getTime() + 9 * 3600e3);
+    return { y: j.getUTCFullYear(), mo: j.getUTCMonth() + 1, d: j.getUTCDate(), h: j.getUTCHours(), mi: j.getUTCMinutes() };
+  }
+  const parts = s => s.split('-').map(Number);
+  const dow = s => { const [y, m, d] = parts(s); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); };
+  const addDays = (s, n) => { const [y, m, d] = parts(s); const t = new Date(Date.UTC(y, m - 1, d + n)); return iso(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()); };
+  const md = s => { const [, m, d] = parts(s); return `${m}/${d}`; };
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  // "開場17:30 開演18:30" "9:30〜15:00" "17:00 / 18:00" などから表示用の時刻を取り出す（今日の画面と同じ規則）
+  function parseTime(s) {
+    if (!s || /最終日/.test(s)) return null;
+    const times = [...s.matchAll(/(\d{1,2})[:：](\d{2})/g)].map(m => ({ h: +m[1], m: +m[2], i: m.index }));
+    if (!times.length) return null;
+    let main = times[0], label = '';
+    const kaien = s.indexOf('開演');
+    if (/開場/.test(s) && kaien >= 0) { main = times.find(t => t.i > kaien) || times.filter(t => t.i < kaien).pop() || main; label = '開演'; }
+    else if (kaien >= 0) label = '開演';
+    const slash = s.match(/(\d{1,2})[:：](\d{2})\s*[\/／]\s*(\d{1,2})[:：](\d{2})/);
+    if (slash && kaien < 0) { main = { h: +slash[3], m: +slash[4] }; label = '開演'; }
+    const rng = s.match(/(\d{1,2})[:：](\d{2})\s*[〜~\-－ー]\s*(\d{1,2})[:：](\d{2})/);
+    if (rng) { main = { h: +rng[1], m: +rng[2] }; label = `〜${rng[3]}:${rng[4]}`; }
+    const multi = (s.match(/[①②③④]/g) || []).length;
+    if (multi > 1) label = `ほか${multi - 1}回`;
+    return { h: main.h, m: main.m, label };
+  }
+
+  let data = null, SRC = {}, months = [], ym = '', sel = '', today = '';
+
+  function clinicKinds(ds) {
+    const c = data && data.clinic;
+    const st = c && c.days && c.days[ds];
+    if (!st || !st.some(Boolean)) return null;
+    const sat = dow(ds) === 6;
+    return st.map(s => !s ? 'unknown' : s === 'closed' ? 'closed' : (s === 'pm_closed' || sat) ? 'am' : 'open');
+  }
+
+  const evOn = ds => data.events.filter(e => e.start <= ds && ds <= e.end);
+  function shortTitle(e) {
+    let t = e.title || '';
+    if (e.s === 'rensa' && t.includes(' / ')) t = t.split(' / ')[0];
+    return t.replace(/^\d{4}\s*/, '').replace(/^仙台三越の/, '').replace(/^第\d+回\s*/, '');
+  }
+
+  function buildMonths() {
+    const last = data.events.reduce((m, e) => e.end > m ? e.end : m, today).slice(0, 7);
+    const out = []; let [y, m] = parts(today.slice(0, 7) + '-01');
+    while (out.length < 12) { const k = `${y}-${pad(m)}`; out.push(k); if (k >= last) break; if (++m > 12) { m = 1; y++; } }
+    return out;
+  }
+
+  function weekEl(days) {
+    const ws = days[0].ds, we = days[6].ds;
+    const evs = data.events.filter(e => e.start <= we && e.end >= ws);
+    const multi = evs.filter(e => e.end !== e.start).sort((a, b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+    const single = evs.filter(e => e.end === e.start);
+    // 何日も続く予定は、重ならない段に割り当てて帯にする
+    const lanes = [];
+    const bars = multi.map(e => {
+      const s = e.start < ws ? 0 : days.findIndex(d => d.ds === e.start);
+      const t = e.end > we ? 6 : days.findIndex(d => d.ds === e.end);
+      let lane = lanes.findIndex(end => end < s);
+      if (lane < 0) { lane = lanes.length; lanes.push(t); } else lanes[lane] = t;
+      return { e, s, t, lane };
+    });
+    const L = lanes.length;
+    const w = el('div', 'week');
+    w.setAttribute('role', 'row');
+    w.style.gridTemplateRows = `auto ${'auto '.repeat(L)}1fr`;
+    days.forEach((d, i) => {
+      const b = el('button', `day c${i}${d.out ? ' out' : ''}${d.ds === today ? ' today' : ''}${d.ds === sel ? ' sel' : ''}`);
+      b.type = 'button'; b.style.gridColumn = i + 1; b.dataset.d = d.ds;
+      b.setAttribute('aria-label', `${md(d.ds)}（${WD[d.w]}）の予定`);
+      w.append(b);
+    });
+    days.forEach((d, i) => {
+      const h = el('div', `dh${d.out ? ' out' : ''}${d.w === 0 ? ' sun' : d.w === 6 ? ' sat' : ''}${d.ds === today ? ' today' : ''}`);
+      h.style.gridColumn = i + 1;
+      h.append(el('span', 'num', String(d.n)));
+      const k = clinicKinds(d.ds);
+      if (k) {
+        const kc = el('span', 'kc');
+        if (k.every(x => x === 'closed' || x === 'unknown')) kc.append(el('span', 'closed', '休'));
+        else k.forEach((x, j) => { const s = el('span', x); s.append(el('span', 'l', (data.clinic.floors[j] || '').slice(0, 1)), document.createTextNode(MARK[x])); kc.append(s); });
+        h.append(kc);
+      }
+      w.append(h);
+    });
+    bars.forEach(({ e, s, t, lane }) => {
+      const b = el('div', `bar${e.start < ws ? ' fp' : ''}${e.end > we ? ' tn' : ''}${days[s].out && days[t].out ? ' out' : ''}`);
+      b.style.gridColumn = `${s + 1} / ${t + 2}`; b.style.gridRow = lane + 2;
+      b.style.setProperty('--c', (SRC[e.s] || {}).color || '#adb5bd');
+      b.append(el('span', '', shortTitle(e)));
+      b.title = `${e.title}（${md(e.start)}〜${md(e.end)}）`;
+      w.append(b);
+    });
+    days.forEach((d, i) => {
+      const list = single.filter(e => e.start === d.ds);
+      if (!list.length) return;
+      const g = el('div', `sg${d.out ? ' out' : ''}`);
+      g.style.gridColumn = i + 1; g.style.gridRow = L + 2;
+      list.slice(0, 4).forEach(e => {
+        const r = el('span', 'row');
+        const dot = el('i'); dot.style.setProperty('--c', (SRC[e.s] || {}).color || '#adb5bd');
+        r.append(dot, el('span', 't', shortTitle(e)));
+        g.append(r);
+      });
+      if (list.length > 4) g.append(el('span', 'more', `+${list.length - 4}`));
+      w.append(g);
+    });
+    return w;
+  }
+
+  function renderMonth() {
+    const [y, m] = parts(ym + '-01');
+    document.getElementById('mlabel').textContent = `${y}年${m}月`;
+    const idx = months.indexOf(ym);
+    document.getElementById('prev').disabled = idx <= 0;
+    document.getElementById('next').disabled = idx >= months.length - 1;
+    const cal = document.getElementById('cal');
+    cal.textContent = '';
+    const head = el('div', 'wk');
+    WD.forEach((w, i) => head.append(el('div', i === 0 ? 'sun' : i === 6 ? 'sat' : '', w)));
+    cal.append(head);
+    const first = `${ym}-01`;
+    let ds = addDays(first, -dow(first));
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const nWeeks = Math.ceil((dow(first) + lastDay) / 7);
+    for (let k = 0; k < nWeeks; k++) {
+      const days = [];
+      for (let i = 0; i < 7; i++) { const [, mm, dd] = parts(ds); days.push({ ds, n: dd, w: i, out: mm !== m }); ds = addDays(ds, 1); }
+      cal.append(weekEl(days));
+    }
+  }
+
+  function renderDetail() {
+    const box = document.getElementById('detail');
+    box.textContent = '';
+    const h = el('h2', '', `${md(sel)}（${WD[dow(sel)]}）`);
+    if (sel === today) h.append(el('small', '', '今日'));
+    box.append(h);
+    const k = clinicKinds(sel);
+    if (k) {
+      const c = el('div', 'clin');
+      c.append(el('span', 'h', '健診'));
+      const fs = el('div', 'fs');
+      k.forEach((x, i) => {
+        const f = el('div', 'f');
+        f.append(el('small', '', data.clinic.floors[i] || ''), el('span', 'mk ' + x, MARK[x]),
+          el('span', x === 'closed' || x === 'unknown' ? 'closed' : '', x === 'am' && dow(sel) === 6 ? '午前のみ（土曜）' : MARK_TEXT[x]));
+        fs.append(f);
+      });
+      c.append(fs);
+      box.append(c);
+    }
+    const list = evOn(sel).map(e => ({ e, t: e.start === e.end ? parseTime(e.time) : null }))
+      .sort((a, b) => (a.e.start === a.e.end ? 0 : 1) - (b.e.start === b.e.end ? 0 : 1)
+        || (a.t ? a.t.h * 60 + a.t.m : 9999) - (b.t ? b.t.h * 60 + b.t.m : 9999));
+    if (!list.length) { box.append(el('p', 'none', 'この日のイベントはありません')); return; }
+    const ul = el('ul', 'evs');
+    list.forEach(({ e, t }) => {
+      const li = el('li', 'ev');
+      const tm = el('div', 'tm');
+      if (t) { tm.append(el('b', '', `${t.h}:${pad(t.m)}`)); if (t.label) tm.append(el('span', '', t.label)); }
+      else tm.append(el('b', '', e.start === e.end ? '終日' : '会期中'));
+      const m = el('div', 'm');
+      m.append(el('div', 'ti', e.title));
+      const vn = el('div', 'vn'); const dot = el('i'); dot.style.setProperty('--c', (SRC[e.s] || {}).color || '#adb5bd');
+      vn.append(dot, el('span', '', e.venue || (SRC[e.s] || {}).name || ''));
+      m.append(vn);
+      li.append(tm, m);
+      if (e.start !== e.end) li.append(el('span', 'pd', `${md(e.start)}〜${md(e.end)}`));
+      ul.append(li);
+    });
+    box.append(ul);
+  }
+
+  function renderLegend() {
+    const lg = document.getElementById('legend');
+    lg.textContent = '';
+    data.sources.filter(s => s.kind !== 'clinic').forEach(s => {
+      const x = el('span', 's'); const i = el('i'); i.style.setProperty('--c', s.color);
+      x.append(i, document.createTextNode(s.name)); lg.append(x);
+    });
+    if (data.clinic) {
+      const x = el('span');
+      x.append(document.createTextNode('健診：'), el('b', 'open', '○'), document.createTextNode('午前・午後 '),
+        el('b', 'am', '△'), document.createTextNode('午前のみ '), el('b', 'closed', '×'), document.createTextNode('休診（左が女性・右が男性）'));
+      lg.append(x);
+    }
+    const u = data.data_updated_at;
+    document.getElementById('status').textContent = u ? `定禅寺通りイベントカレンダー · 更新 ${md(u.slice(0, 10))} ${u.slice(11, 16)}` : '定禅寺通りイベントカレンダー';
+    document.getElementById('hint').textContent = kiosk ? `日付を押すと詳しく出ます · ${IDLE_BACK_SEC / 60}分触らないと今日の画面に戻ります` : '日付を押すと詳しく出ます';
+  }
+
+  function renderAll() {
+    const n = nowJST();
+    today = iso(n.y, n.mo, n.d);
+    document.body.classList.toggle('night', n.h >= NIGHT[0] || n.h < NIGHT[1]);
+    if (!data) { document.getElementById('detail').textContent = '予定を読み込めません。Wi-Fiの接続を確認してください'; return; }
+    SRC = Object.fromEntries(data.sources.map(s => [s.id, s]));
+    months = buildMonths();
+    if (!months.includes(ym)) ym = months[0];
+    if (!sel) sel = today;
+    renderMonth(); renderDetail(); renderLegend();
+  }
+
+  document.getElementById('cal').addEventListener('click', ev => {
+    const b = ev.target.closest('.day'); if (!b) return;
+    sel = b.dataset.d;
+    const selYm = sel.slice(0, 7);
+    if (selYm !== ym && months.includes(selYm)) ym = selYm;
+    renderMonth(); renderDetail();
+  });
+  document.getElementById('prev').addEventListener('click', () => { const i = months.indexOf(ym); if (i > 0) { ym = months[i - 1]; renderMonth(); } });
+  document.getElementById('next').addEventListener('click', () => { const i = months.indexOf(ym); if (i < months.length - 1) { ym = months[i + 1]; renderMonth(); } });
+
+  // 表示板として使っているときは、しばらく触らなければ今日の画面に戻る
+  if (kiosk) {
+    let last = Date.now();
+    ['pointerdown', 'touchstart', 'keydown', 'wheel', 'scroll'].forEach(t => addEventListener(t, () => { last = Date.now(); }, { passive: true }));
+    setInterval(() => { if (Date.now() - last > IDLE_BACK_SEC * 1000) location.href = document.getElementById('back').href; }, 5000);
+  }
+
+  (async () => {
+    try {
+      const sep = dataUrl.includes('?') ? '&' : '?';
+      const r = await fetch(`${dataUrl}${sep}t=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      data = await r.json();
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+    } catch (_) {
+      try { const c = localStorage.getItem(CACHE_KEY); if (c) data = JSON.parse(c); } catch (_) {}
+    }
+    renderAll();
+  })();
+})();
+</script>
+</body>
+</html>

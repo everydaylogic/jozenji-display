@@ -4,6 +4,8 @@
 **今日の分**を大きく表示するページです。古いスマホなどを置きっぱなしの表示板にする用途を想定しています。
 
 - ページ: `docs/`（GitHub Pages で公開）
+  - `index.html` … 今日の予定（表示板の基本画面）
+  - `calendar.html` … 月間カレンダー（日付を押すと詳細。表示板では2分触らないと今日の画面に戻る）
 - データ: `docs/events.json`（毎週の自動更新で書き換え。公開情報のみ）
 - データ作成: `tools/build_events_json.py`
 
@@ -23,3 +25,4 @@ python3 tools/build_events_json.py <sourcesのJSONフォルダ> docs/events.json
 
 - `?now=2026-11-11T08:05` … 表示する日時を固定する（日本時間）
 - `?data=xxx.json` … 別のデータファイルを読む
+- `?kiosk=1` … 表示板として動かす（月間カレンダーの自動で戻る動作の確認用）

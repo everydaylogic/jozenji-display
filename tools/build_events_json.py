@@ -3,7 +3,10 @@
 表示用ページが読む公開用の events.json を作る。
 
 使い方:
-  python3 build_events_json.py <sourcesフォルダ> <出力するevents.json> [--days 21]
+  python3 build_events_json.py <sourcesフォルダ> <出力するevents.json> --clinic <clinic/calendar.json>
+
+月間カレンダーでも使うので、今月1日以降に終わる予定は（先の月の分も）すべて載せる。
+健診の受付状況は約5か月先まで載せる。
 
 公開されるファイルなので、載せるのはイベント名・日時・会場・色だけにする
 （問い合わせ先などのメモやURLは載せない）。
@@ -47,14 +50,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sources_dir")
     ap.add_argument("out")
-    ap.add_argument("--days", type=int, default=21, help="今日から何日先まで載せるか")
+    ap.add_argument("--days", type=int, default=0, help="今日から何日先まで載せるか（0 = 制限なし）")
+    ap.add_argument("--clinic-days", type=int, default=150, help="健診を今日から何日先まで載せるか")
     ap.add_argument("--today", help="基準日（テスト用, YYYY-MM-DD）")
     ap.add_argument("--clinic", help="健診の年間スケジュール（clinic/calendar の JSON）")
     args = ap.parse_args()
 
     today = dt.date.fromisoformat(args.today) if args.today else dt.datetime.now(JST).date()
-    window_start = today - dt.timedelta(days=1)
-    window_end = today + dt.timedelta(days=args.days)
+    window_start = today.replace(day=1)
+    window_end = today + dt.timedelta(days=args.days) if args.days else dt.date.max
 
     sources = []
     events = []
@@ -100,7 +104,8 @@ def main():
             labels = {"women": "女性", "men": "男性"}
             days = {}
             d = window_start
-            while d <= window_end:
+            clinic_end = today + dt.timedelta(days=args.clinic_days)
+            while d <= clinic_end:
                 k = d.isoformat()
                 st = [cal["floors"][f]["days"].get(k) for f in floors]
                 if any(st):
@@ -118,11 +123,12 @@ def main():
     sources.sort(key=lambda s: s["order"])
     events.sort(key=lambda e: (e["start"], e["s"], e["title"]))
     fetched = [s["fetched_at"] for s in sources if s["fetched_at"]]
+    last_end = max((e["end"] for e in events), default=today.isoformat())
     out = {
         "v": 1,
         "generated_at": dt.datetime.now(JST).isoformat(timespec="minutes"),
         "data_updated_at": max(fetched) if fetched else "",
-        "range": [window_start.isoformat(), window_end.isoformat()],
+        "range": [window_start.isoformat(), last_end],
         "sources": sources,
         "events": events,
         "clinic": clinic,

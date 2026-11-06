@@ -1,6 +1,6 @@
 // ネットを優先し、つながらないときだけ前回の内容を使う
-const CACHE = 'jozenji-display-v1';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png'];
+const CACHE = 'jozenji-display-v2';
+const SHELL = ['./', 'index.html', 'calendar.html', 'manifest.webmanifest', 'icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
